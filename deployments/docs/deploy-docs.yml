@@ -1,0 +1,72 @@
+name: Deploy to GitHub Pages (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        required: false
+        default: '3.x'
+        type: string
+      requirements-file:
+        description: 'Path to requirements.txt'
+        required: false
+        default: 'requirements.txt'
+        type: string
+      build-command:
+        description: 'Command to build the site'
+        required: false
+        default: 'zensical build --clean'
+        type: string
+      artifact-path:
+        description: 'Path to built site to upload'
+        required: false
+        default: 'site'
+        type: string
+      environment-name:
+        description: 'GitHub Pages environment name'
+        required: false
+        default: 'github-pages'
+        type: string
+    secrets:
+      github-token:
+        description: 'GitHub token for authentication (usually GITHUB_TOKEN)'
+        required: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment-name }}
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: pip install -r ${{ inputs.requirements-file }}
+
+      - name: Build site
+        run: ${{ inputs.build-command }}
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ inputs.artifact-path }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
