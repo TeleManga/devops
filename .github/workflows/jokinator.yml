@@ -46,21 +46,24 @@ jobs:
           token = os.getenv("GITHUB_TOKEN")
           repo = os.getenv("GITHUB_REPOSITORY")
           client = Client()
+
           with open("changes.txt", "r") as f:
               diff = f.read()
 
           def generate_joke(topic):
               response = client.chat.completions.create(
-               model="gpt-4o-mini",
-               messages=[{
-               "role": "user",
-               "content": (
+                  model="gpt-4o-mini",
+                  messages=[{
+                      "role": "user",
+                      "content": (
                           "Ты ревьювер для merge request в github. "
                           "Напиши анекдот на самое смешное изменение в коде, "
                           "а потом напиши что все таки стоит сделать для нормального кода "
                           "(обычное ревью, не будь слишком критичен). "
                           "Пиши в синтаксисе markdown. "
-                          f"Для ревью пришли следующие изменения: {topic}"}],
+                          f"Для ревью пришли следующие изменения: {topic}"
+                      ),
+                  }],
               )
               return response.choices[0].message.content
 
