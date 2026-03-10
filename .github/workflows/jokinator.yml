@@ -52,7 +52,7 @@ jobs:
           def generate_joke(topic):
               return g4f.ChatCompletion.create(
                   model=g4f.models.default,
-                  provider=g4f.models.Yqcloud,
+                  provider=g4f.models.Qwen,
                   messages=[{
                       "role": "user",
                       "content": (
