@@ -1,0 +1,60 @@
+name: Deploy Services
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy_n8n:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_PATH: /opt/telemanga-devops
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start ssh-agent and add key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync project files to server
+        run: |
+          rsync -az \
+            --exclude ".git" \
+            --exclude ".github" \
+            -e "ssh -p ${{ secrets.SSH_PORT }}" \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_PATH }}/"
+
+      - name: Render .env from GitHub Secrets
+        run: |
+          ENV_FILE="$(mktemp)"
+          {
+            echo "GENERIC_TIMEZONE=${{ secrets.GENERIC_TIMEZONE }}"
+            echo "N8N_HOST=0.0.0.0"
+            echo "N8N_PORT=5678"
+            echo "N8N_PROTOCOL=http"
+            echo "N8N_BASIC_AUTH_ACTIVE=true"
+            echo "N8N_BASIC_AUTH_USER=${{ secrets.N8N_BASIC_AUTH_USER }}"
+            echo "N8N_BASIC_AUTH_PASSWORD=${{ secrets.N8N_BASIC_AUTH_PASSWORD }}"
+            echo "N8N_ENCRYPTION_KEY=${{ secrets.N8N_ENCRYPTION_KEY }}"
+          } > "${ENV_FILE}"
+
+          scp -P "${{ secrets.SSH_PORT }}" "${ENV_FILE}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_PATH }}/services/n8n/.env"
+
+          rm -f "${ENV_FILE}"
+
+      - name: Deploy n8n
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "docker compose -f '${{ env.DEPLOY_PATH }}/services/n8n/docker-compose.yml' pull && \
+             docker compose -f '${{ env.DEPLOY_PATH }}/services/n8n/docker-compose.yml' up -d"
