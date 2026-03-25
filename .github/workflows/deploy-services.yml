@@ -28,11 +28,12 @@ jobs:
 
       - name: Sync project files to server
         run: |
-          rsync -az \
-            --exclude ".git" \
-            --exclude ".github" \
-            -e "ssh -p ${{ secrets.SSH_PORT }}" \
-            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_PATH }}/"
+          ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "mkdir -p '${{ env.DEPLOY_PATH }}'"
+
+          git archive --format=tar HEAD | \
+            ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "tar -xf - -C '${{ env.DEPLOY_PATH }}'"
 
       - name: Render .env from GitHub Secrets
         run: |
